@@ -1,29 +1,119 @@
 <script>
-  // Import from svelte/internal to ensure compatibility with Svelte 5
   import { onMount } from 'svelte';
   
-  // Canvas and animation state
+  // Canvas reference
   let canvas;
-  let ctx;
-  let particles = [];
-  let animationFrameId;
   
-  // Configuration for the matrix background
-  const particleCount = 120;
-  const particleMaxSize = 4;
-  const connectionDistance = 200;
-  const particleSpeed = 0.8;
+  // Static configuration
+  const config = {
+    particleCount: 120,
+    particleMaxSize: 4,
+    connectionDistance: 200,
+    particleSpeed: 0.8
+  };
   
-  // Initialize the canvas and animation only when the component is mounted
+  // Initialize everything in onMount to avoid SSR issues
   onMount(() => {
     if (typeof window === 'undefined') return;
     
-    // Initialize canvas
+    // Initialize variables inside onMount to avoid reactivity issues
+    let ctx = null;
+    let particles = [];
+    let animationFrameId = null;
+    
+    // Set up canvas
+    function initCanvas() {
+      ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    // Handle window resize
+    function handleResize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    // Create particles
+    function createParticles() {
+      particles = [];
+      for (let i = 0; i < config.particleCount; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * config.particleMaxSize + 1,
+          speedX: (Math.random() - 0.5) * config.particleSpeed,
+          speedY: (Math.random() - 0.5) * config.particleSpeed
+        });
+      }
+    }
+    
+    // Animation function
+    function animate() {
+      if (!ctx) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Update and draw particles
+      for (let i = 0; i < particles.length; i++) {
+        let p = particles[i];
+        
+        // Move particles
+        p.x += p.speedX;
+        p.y += p.speedY;
+        
+        // Bounce off edges
+        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+        
+        // Draw particle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+        ctx.fill();
+        
+        // Add glow effect to particles
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+        ctx.fill();
+        
+        // Connect particles with lines
+        for (let j = i + 1; j < particles.length; j++) {
+          let p2 = particles[j];
+          let distance = Math.sqrt(
+            Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2)
+          );
+          
+          if (distance < config.connectionDistance) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(100, 200, 255, ${1 - distance / config.connectionDistance})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Add subtle pulse effect to connections
+            const pulseIntensity = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(150, 220, 255, ${(1 - distance / config.connectionDistance) * 0.3 * pulseIntensity})`;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+          }
+        }
+      }
+      
+      animationFrameId = requestAnimationFrame(animate);
+    }
+    
+    // Initialize everything
     initCanvas();
     createParticles();
     animate();
     
-    // Handle window resize
+    // Set up event listeners
     window.addEventListener('resize', handleResize);
     
     // Cleanup function
@@ -34,87 +124,7 @@
       }
     };
   });
-  
-  function initCanvas() {
-    ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  
-  function handleResize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  
-  function createParticles() {
-    particles = [];
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * particleMaxSize + 1,
-        speedX: (Math.random() - 0.5) * particleSpeed,
-        speedY: (Math.random() - 0.5) * particleSpeed
-      });
-    }
-  }
-  
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Update and draw particles
-    for (let i = 0; i < particles.length; i++) {
-      let p = particles[i];
-      
-      // Move particles
-      p.x += p.speedX;
-      p.y += p.speedY;
-      
-      // Bounce off edges
-      if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
-      if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
-      
-      // Draw particle
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-      ctx.fill();
-      
-      // Add glow effect to particles
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
-      ctx.fill();
-      
-      // Connect particles with lines
-      for (let j = i + 1; j < particles.length; j++) {
-        let p2 = particles[j];
-        let distance = Math.sqrt(
-          Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2)
-        );
-        
-        if (distance < connectionDistance) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `rgba(100, 200, 255, ${1 - distance / connectionDistance})`;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          
-          // Add subtle pulse effect to connections
-          const pulseIntensity = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `rgba(150, 220, 255, ${(1 - distance / connectionDistance) * 0.3 * pulseIntensity})`;
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-        }
-      }
-    }
-    
-    animationFrameId = requestAnimationFrame(animate);
-  }
+
 </script>
 
 <canvas bind:this={canvas} class="background-canvas"></canvas>
