@@ -1,121 +1,28 @@
 <script>
-  import { onMount } from 'svelte';
-  
-  // Canvas reference
-  let canvas;
-  
-  // Static configuration
-  const config = {
-    particleCount: 120,
-    particleMaxSize: 4,
-    connectionDistance: 200,
-    particleSpeed: 0.8
-  };
-  
-  // Initialize everything in onMount to avoid SSR issues
-  onMount(() => {
+  // Canvas and animation state
+  let canvas = $state();
+  let ctx = $state();
+  let particles = $state([]);
+  let animationFrameId = $state();
+
+  // Configuration for the matrix background
+  const particleCount = 120;
+  const particleMaxSize = 4;
+  const connectionDistance = 200;
+  const particleSpeed = 0.8;
+
+  // Initialize the canvas and animation only when the component is mounted
+  $effect(() => {
     if (typeof window === 'undefined') return;
-    
-    // Initialize variables inside onMount to avoid reactivity issues
-    let ctx = null;
-    let particles = [];
-    let animationFrameId = null;
-    
-    // Set up canvas
-    function initCanvas() {
-      ctx = canvas.getContext('2d');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    
-    // Handle window resize
-    function handleResize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    
-    // Create particles
-    function createParticles() {
-      particles = [];
-      for (let i = 0; i < config.particleCount; i++) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          size: Math.random() * config.particleMaxSize + 1,
-          speedX: (Math.random() - 0.5) * config.particleSpeed,
-          speedY: (Math.random() - 0.5) * config.particleSpeed
-        });
-      }
-    }
-    
-    // Animation function
-    function animate() {
-      if (!ctx) return;
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Update and draw particles
-      for (let i = 0; i < particles.length; i++) {
-        let p = particles[i];
-        
-        // Move particles
-        p.x += p.speedX;
-        p.y += p.speedY;
-        
-        // Bounce off edges
-        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
-        
-        // Draw particle
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-        ctx.fill();
-        
-        // Add glow effect to particles
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
-        ctx.fill();
-        
-        // Connect particles with lines
-        for (let j = i + 1; j < particles.length; j++) {
-          let p2 = particles[j];
-          let distance = Math.sqrt(
-            Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2)
-          );
-          
-          if (distance < config.connectionDistance) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(100, 200, 255, ${1 - distance / config.connectionDistance})`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Add subtle pulse effect to connections
-            const pulseIntensity = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(150, 220, 255, ${(1 - distance / config.connectionDistance) * 0.3 * pulseIntensity})`;
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-          }
-        }
-      }
-      
-      animationFrameId = requestAnimationFrame(animate);
-    }
-    
-    // Initialize everything
+
+    // Initialize canvas
     initCanvas();
     createParticles();
     animate();
-    
-    // Set up event listeners
+
+    // Handle window resize
     window.addEventListener('resize', handleResize);
-    
+
     // Cleanup function
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -125,6 +32,84 @@
     };
   });
 
+  function initCanvas() {
+    ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function handleResize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function createParticles() {
+    particles = [];
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * particleMaxSize + 1,
+        speedX: (Math.random() - 0.5) * particleSpeed,
+        speedY: (Math.random() - 0.5) * particleSpeed,
+      });
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update and draw particles
+    for (let i = 0; i < particles.length; i++) {
+      let p = particles[i];
+
+      // Move particles
+      p.x += p.speedX;
+      p.y += p.speedY;
+
+      // Bounce off edges
+      if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+
+      // Draw particle
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+      ctx.fill();
+
+      // Add glow effect to particles
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+      ctx.fill();
+
+      // Connect particles with lines
+      for (let j = i + 1; j < particles.length; j++) {
+        let p2 = particles[j];
+        let distance = Math.sqrt(Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2));
+
+        if (distance < connectionDistance) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(100, 200, 255, ${1 - distance / connectionDistance})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Add subtle pulse effect to connections
+          const pulseIntensity = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(150, 220, 255, ${(1 - distance / connectionDistance) * 0.3 * pulseIntensity})`;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(animate);
+  }
 </script>
 
 <canvas bind:this={canvas} class="background-canvas"></canvas>
@@ -141,12 +126,12 @@
         <h3>Software Development</h3>
         <p>Custom software solutions built with modern technologies and best practices</p>
       </div>
-      
+
       <div class="service-item">
         <h3>Architecture Design</h3>
         <p>Scalable and maintainable system architectures tailored to your business needs</p>
       </div>
-      
+
       <div class="service-item">
         <h3>Engineering Management</h3>
         <p>Technical leadership and team management for successful project delivery</p>
@@ -162,7 +147,11 @@
 
 <style>
   :global(body) {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
     line-height: 1.6;
     color: #333;
     background-color: #040b1a;
@@ -187,7 +176,7 @@
     padding: 4rem 4rem;
     position: relative;
     z-index: 1;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     border-radius: 1rem;
   }
 
@@ -235,13 +224,15 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 8px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .service-item:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
   }
 
   .service-item p {
