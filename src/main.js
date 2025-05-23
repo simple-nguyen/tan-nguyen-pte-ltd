@@ -1,7 +1,8 @@
 import './app.css'
 import App from './App.svelte'
 
-const app = new App({
+// Svelte 5 uses createRoot for mounting components
+const app = App.mount({
   target: document.getElementById('app')
 })
 
