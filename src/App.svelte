@@ -1,6 +1,8 @@
 <script>
+  // Import from svelte/internal to ensure compatibility with Svelte 5
   import { onMount } from 'svelte';
   
+  // Canvas and animation state
   let canvas;
   let ctx;
   let particles = [];
@@ -12,20 +14,25 @@
   const connectionDistance = 200;
   const particleSpeed = 0.8;
   
+  // Initialize the canvas and animation only when the component is mounted
   onMount(() => {
-    if (typeof window !== 'undefined') {
-      initCanvas();
-      createParticles();
-      animate();
-      
-      // Handle window resize
-      window.addEventListener('resize', handleResize);
-      
-      return () => {
-        window.removeEventListener('resize', handleResize);
+    if (typeof window === 'undefined') return;
+    
+    // Initialize canvas
+    initCanvas();
+    createParticles();
+    animate();
+    
+    // Handle window resize
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
-      };
-    }
+      }
+    };
   });
   
   function initCanvas() {
