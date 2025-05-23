@@ -1,8 +1,9 @@
 import './app.css'
 import App from './App.svelte'
+import { mount } from 'svelte'
 
-// Svelte 5 uses createRoot for mounting components
-const app = App.mount({
+// Correct Svelte 5 initialization pattern
+const app = mount(App, {
   target: document.getElementById('app')
 })
 
